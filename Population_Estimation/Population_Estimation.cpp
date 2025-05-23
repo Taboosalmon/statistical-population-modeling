@@ -30,8 +30,7 @@ struct country_data
 
 std::vector<country_data> out_p;
 std::unordered_map<string, int> country_index_by_id;
-int k = 1;
-
+int k = 4;
 
 
 
@@ -98,7 +97,7 @@ double eval_f(country_data& p2, VectorXd& x)
     return pow(10, sum);
 }
 
-void variance_explained(VectorXd& x, std::vector<double>& predicted_population)
+void variance_explained(std::vector<double>& predicted_population)
 {
     int row_am = out_p.size();
     double y_bar = 0;
@@ -119,10 +118,10 @@ void variance_explained(VectorXd& x, std::vector<double>& predicted_population)
     cout << "variance explained : " << 1 - num / den << '\n';
 }
 
-VectorXd matrix_calculate(int row_am, int total_population_weight)
+VectorXd matrix_calculate(int row_am)
 {
-    MatrixXd A(row_am + total_population_weight, k * 6 + 1);
-    VectorXd B(row_am + total_population_weight);
+    MatrixXd A(row_am, k * 6 + 1);
+    VectorXd B(row_am);
     for (int i = 0; i < row_am; i++)
     {
         B(i) = log10(out_p[i].population);
@@ -142,25 +141,26 @@ VectorXd matrix_calculate(int row_am, int total_population_weight)
     return A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(B);
 }
 
-void global_population(VectorXd& x)
+void global_and_delta_population(vector<double>& predicted_population)
 {
     long long sum = 0;
     long long delta = 0;
 
     for (int p = 0; p < out_p.size(); p++)
     {
-        sum += eval_f(out_p[p], x);
-        delta += out_p[p].population - eval_f(out_p[p], x);
+        sum += predicted_population[p];
+        delta += out_p[p].population - predicted_population[p];
     }
-    cout << "Total estimated world population: " << std::fixed << sum << '\n';
+    cout << "Total estimated world population: " << std::fixed << sum
+        << "\nand the total error was: " << delta << '\n';
 }
+
 int main() 
 {    
     cout.imbue(std::locale("en_US.UTF-8"));
     load_data();
     int row_am = out_p.size();
-    VectorXd x = matrix_calculate(row_am, 1);
-    cout << x;
+    VectorXd x = matrix_calculate(row_am);
 
     vector<double> predicted_population;
     for (int i = 0; i < row_am; i++)
@@ -168,8 +168,8 @@ int main()
         predicted_population.push_back(eval_f(out_p[i], x));
     }
 
-    global_population(x);
-    variance_explained(x, predicted_population);
+    global_and_delta_population(predicted_population);
+    variance_explained(predicted_population);
 
 
     while (true)
@@ -178,19 +178,9 @@ int main()
         std::cin >> count;
         int count_ind = country_index_by_id[count];
         
-        cout << out_p[count_ind].country_name << "\n estimated pop: "
-            << std::fixed << (int)predicted_population[count_ind] << "\n true pop: "
-            << out_p[count_ind].population << "\n delta pop: " << (int)abs(out_p[count_ind].population - predicted_population[count_ind])
+        cout << out_p[count_ind].country_name << "\nestimated pop: "
+            << std::fixed << (int)predicted_population[count_ind] << "\ntrue pop: "
+            << out_p[count_ind].population << "\ndelta pop: " << (int)abs(out_p[count_ind].population - predicted_population[count_ind])
             << "\n \n";
     }
-
-    /*
-        -0.371136       gdp_capita
-        0.03633         life_expectancy
-        -0.0108641      healthcare
-        -0.0442496      landlocked
-        0.00761164      temperature
-        0.719452        area
-        2.12836         constant
-    */
 }
